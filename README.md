@@ -48,13 +48,13 @@ This project helps users track GitHub repositories and see the latest releases.
 ### Database Setup
 1. Create a PostgreSQL database:
 ```bash
-createdb github_tracker
+createdb github-tracker
 ```
 
-2. Run the schema migrations:
+2. Run the schema:
 ```bash
 cd github-tracker-backend
-psql -d github_tracker -f schema.sql
+psql -d github-tracker -f schema.sql
 ```
 
 ### Backend Setup
@@ -214,7 +214,7 @@ To verify that data persists correctly:
 You can also verify data directly in the database:
 
 ```bash
-psql -d github_tracker -c "SELECT * FROM repositories;"
+psql -d github-tracker -c "SELECT * FROM repositories;"
 ```
 
 ### Database Schema
@@ -233,8 +233,7 @@ CREATE TABLE releases (
     repository_id INTEGER REFERENCES repositories(id) ON DELETE CASCADE,
     version TEXT NOT NULL,
     release_date TIMESTAMP NOT NULL,
-    release_notes TEXT,
-    commit_history JSONB
+    release_notes TEXT
 );
 
 CREATE TABLE seen_status (
@@ -248,5 +247,3 @@ CREATE TABLE seen_status (
 The data will persist even if you:
 - Restart the servers
 - Restart your computer
-- Clear your browser cache
-- Use a different browser
