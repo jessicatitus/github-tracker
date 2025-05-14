@@ -1,0 +1,23 @@
+{
+  "name": "github-tracker-backend",
+  "version": "1.0.0",
+  "main": "index.js",
+  "license": "MIT",
+  "type": "module",
+  "scripts": {
+    "start": "node --no-deprecation --no-warnings --loader ts-node/esm src/index.ts"
+  },
+  "dependencies": {
+    "@octokit/rest": "^20.0.0",
+    "apollo-server": "^3.0.0",
+    "dotenv": "^16.0.0",
+    "graphql": "^16.0.0",
+    "pg": "^8.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "@types/pg": "^8.15.1",
+    "ts-node": "^10.0.0",
+    "typescript": "^5.0.0"
+  }
+}
