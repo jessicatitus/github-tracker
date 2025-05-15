@@ -49,13 +49,13 @@ This project helps users track GitHub repositories and see the latest releases.
 ### Database Setup
 1. Create a PostgreSQL database:
 ```bash
-createdb github-tracker
+createdb github_tracker
 ```
 
 2. Run the schema:
 ```bash
 cd github-tracker-backend
-psql -d github-tracker -f schema.sql
+psql -d github_tracker -f schema.sql
 ```
 
 ### Backend Setup
@@ -65,17 +65,27 @@ cd github-tracker-backend
 npm install
 ```
 
-2. Create a `.env` file with your GitHub API token:
+2. Create a `.env` file in the `github-tracker-backend` directory with the following content:
 ```bash
-# Create a GitHub Personal Access Token (PAT):
-# 1. Go to GitHub.com → Settings → Developer Settings → Personal Access Tokens → Tokens (classic)
-# 2. Generate new token (classic)
-# 3. Select scopes: 'repo' (for private repos) and 'read:user'
-# 4. Copy the token and paste it below
+# Database configuration
+DATABASE_URL=postgres://localhost/github_tracker
+
+# GitHub API token (required)
 GITHUB_TOKEN=your_github_token_here
 ```
 
-3. Start the backend server:
+Note: If you have a password set for PostgreSQL, use this format instead:
+```bash
+DATABASE_URL=postgres://username:password@localhost/github_tracker
+```
+
+3. Create a GitHub Personal Access Token (PAT):
+   - Go to GitHub.com → Settings → Developer Settings → Personal Access Tokens → Tokens (classic)
+   - Generate new token (classic)
+   - Select scopes: 'repo' (for private repos) and 'read:user'
+   - Copy the token and paste it as the value for `GITHUB_TOKEN` in your `.env` file
+
+4. Start the backend server:
 ```bash
 npx ts-node src/index.ts
 ```
@@ -95,6 +105,58 @@ npm start
 ```
 
 3. Open your browser to `http://localhost:3000`
+
+## Troubleshooting
+
+### Database Connection Issues
+If you encounter database connection errors:
+
+1. Verify PostgreSQL is running:
+```bash
+# On macOS
+brew services list
+# On Linux
+sudo service postgresql status
+# On Windows
+# Check Services app for PostgreSQL service
+```
+
+2. Try alternative database connection strings:
+```bash
+# Default connection
+DATABASE_URL=postgres://localhost/github_tracker
+
+# With password
+DATABASE_URL=postgres://username:password@localhost/github_tracker
+
+# With custom port
+DATABASE_URL=postgres://localhost:5432/github_tracker
+```
+
+3. Verify database exists:
+```bash
+psql -l  # List all databases
+```
+
+4. Check database permissions:
+```bash
+psql -d github_tracker -c "\du"  # List users and their roles
+```
+
+### Common Issues
+1. "SASL: SCRAM-SERVER-FIRST-MESSAGE: client password must be a string"
+   - Solution: Ensure your DATABASE_URL is properly formatted in the .env file
+   - Check that PostgreSQL is running
+   - Verify database exists and is accessible
+
+2. "Error loading repositories"
+   - Check that the backend server is running
+   - Verify your GitHub token is valid
+   - Ensure database connection is working
+
+3. "Cannot find module"
+   - Run `npm install` in both frontend and backend directories
+   - Clear node_modules and reinstall: `rm -rf node_modules && npm install`
 
 ## Features
 
@@ -214,7 +276,7 @@ To verify that data persists correctly:
 You can also verify data directly in the database:
 
 ```bash
-psql -d github-tracker -c "SELECT * FROM repositories;"
+psql -d github_tracker -c "SELECT * FROM repositories;"
 ```
 
 ### Database Schema
