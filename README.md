@@ -44,6 +44,7 @@ This project helps users track GitHub repositories and see the latest releases.
 - Node.js (v14 or higher)
 - PostgreSQL (v12 or higher)
 - Git
+- GitHub account with a Personal Access Token (PAT)
 
 ### Database Setup
 1. Create a PostgreSQL database:
@@ -58,43 +59,42 @@ psql -d github-tracker -f schema.sql
 ```
 
 ### Backend Setup
-1. Navigate to the backend directory:
+1. Install dependencies:
 ```bash
 cd github-tracker-backend
-```
-
-2. Install dependencies:
-```bash
 npm install
 ```
 
-3. Create a `.env` file with your GitHub API token:
+2. Create a `.env` file with your GitHub API token:
 ```bash
+# Create a GitHub Personal Access Token (PAT):
+# 1. Go to GitHub.com → Settings → Developer Settings → Personal Access Tokens → Tokens (classic)
+# 2. Generate new token (classic)
+# 3. Select scopes: 'repo' (for private repos) and 'read:user'
+# 4. Copy the token and paste it below
 GITHUB_TOKEN=your_github_token_here
 ```
 
-4. Start the backend server:
+3. Start the backend server:
 ```bash
 npx ts-node src/index.ts
 ```
 
 ### Frontend Setup
-1. Navigate to the frontend directory:
+1. Install dependencies:
 ```bash
-cd github-tracker-frontend
-```
-
-2. Install dependencies:
-```bash
+cd ../github-tracker-frontend  # If you're in the backend directory
+# OR
+cd github-tracker-frontend     # If you're in the root directory
 npm install
 ```
 
-3. Start the development server:
+2. Start the development server:
 ```bash
 npm start
 ```
 
-4. Open your browser to `http://localhost:3000`
+3. Open your browser to `http://localhost:3000`
 
 ## Features
 
