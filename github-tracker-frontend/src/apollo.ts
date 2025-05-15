@@ -7,7 +7,7 @@ const client: ApolloClient<NormalizedCacheObject> = new ApolloClient({
       Query: {
         fields: {
           repositories: {
-            merge(existing = [], incoming) {
+            merge(_, incoming) {
               return incoming;
             }
           }

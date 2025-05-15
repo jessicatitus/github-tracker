@@ -207,8 +207,8 @@ const resolvers = {
     },
     removeRepository: async (_: any, { repoId }: any) => {
       // Delete the repository and cascade to releases and seen_status
-      const res = await pool.query('DELETE FROM repositories WHERE id = $1', [repoId]);
-      return typeof res.rowCount === 'number' ? res.rowCount > 0 : false;
+      const res = await pool.query('DELETE FROM repositories WHERE id = $1 RETURNING id', [repoId]);
+      return res.rows[0]?.id || null;
     }
   }
 };

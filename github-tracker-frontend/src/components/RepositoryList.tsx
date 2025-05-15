@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { useQuery, useMutation, gql } from '@apollo/client';
+import { useQuery, useMutation, gql, useApolloClient } from '@apollo/client';
 import {
   Paper,
   Typography,
@@ -15,10 +15,6 @@ import {
   Button,
   Link,
   Collapse,
-  Divider,
-  ListItemButton,
-  ListItemIcon,
-  ListItemSecondaryAction,
   FormControl,
   InputLabel,
   Select,
@@ -132,21 +128,11 @@ const formatReleaseDate = (dateString: string | null): string => {
   }
 };
 
-const formatCommitDate = (dateString: string | null): string => {
-  if (!dateString) return '';
-  try {
-    const date = new Date(dateString);
-    if (isNaN(date.getTime())) return '';
-    return date.toLocaleDateString();
-  } catch (error) {
-    return '';
-  }
-};
-
 type SortField = 'nameAsc' | 'nameDesc' | 'releaseDate' | 'updateStatus';
 type FilterStatus = 'all' | 'seen' | 'unseen';
 
 export default function RepositoryList() {
+  const client = useApolloClient();
   const [expandedRepo, setExpandedRepo] = useState<string | null>(null);
   const [sortField, setSortField] = useState<SortField>('releaseDate');
   const [filterStatus, setFilterStatus] = useState<FilterStatus>('all');
@@ -301,14 +287,31 @@ export default function RepositoryList() {
 
   const handleRemove = async (repositoryId: string) => {
     try {
+      // Optimistically update the cache
+      const existingData = client.cache.readQuery<{ repositories: Repository[] }>({
+        query: GET_REPOSITORIES,
+      });
+
+      if (existingData) {
+        const updatedRepositories = existingData.repositories.filter(
+          repo => repo.id !== repositoryId
+        );
+
+        client.cache.writeQuery({
+          query: GET_REPOSITORIES,
+          data: {
+            repositories: updatedRepositories,
+          },
+        });
+      }
+
+      // Perform the mutation
       await removeRepository({
         variables: { repoId: repositoryId },
-        optimisticResponse: {
-          removeRepository: repositoryId,
-        },
       });
     } catch (error) {
       console.error('Error removing repository:', error);
+      refetch();
     }
   };
 

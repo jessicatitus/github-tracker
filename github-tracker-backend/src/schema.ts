@@ -26,7 +26,7 @@ const typeDefs = gql`
     addRepository(owner: String!, name: String!): Repository
     markAsSeen(repoId: ID!): Boolean
     refreshRepository(repoId: ID!): Repository
-    removeRepository(repoId: ID!): Boolean
+    removeRepository(repoId: ID!): ID
   }
 `;
 
