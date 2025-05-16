@@ -1,10 +1,5 @@
 import { fetchLatestRelease, fetchRepositoryDetails } from './github.ts';
-import pg from 'pg';
-const { Pool } = pg;
-
-const pool = new Pool({
-  connectionString: process.env.DATABASE_URL || 'postgres://localhost/github_tracker'
-});
+import pool from './db';
 
 interface Repository {
   id: string;
