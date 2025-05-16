@@ -108,6 +108,69 @@ npm start
 
 ## Troubleshooting
 
+### Debugging and Logs
+
+#### Frontend Logs
+1. **Browser Developer Tools**
+   - Open Chrome DevTools (F12 or Cmd+Option+I on Mac)
+   - Go to the "Console" tab to see JavaScript errors and logs
+   - Check the "Network" tab for API request/response issues
+   - Look for red error messages or yellow warnings
+
+2. **React Developer Tools**
+   - Install [React Developer Tools](https://chrome.google.com/webstore/detail/react-developer-tools/fmkadmapgofadopljbjfkapdkoienihi) browser extension
+   - Use the "Components" tab to inspect React component state
+   - Use the "Profiler" tab to debug performance issues
+
+3. **Apollo Client DevTools**
+   - Install [Apollo Client DevTools](https://chrome.google.com/webstore/detail/apollo-client-devtools/jdkknkkbebbapilgoeccciglkfbmbnfm) browser extension
+   - Monitor GraphQL queries and mutations
+   - Inspect Apollo cache state
+   - Debug network requests
+
+#### Backend Logs
+1. **Server Console**
+   - Check the terminal where you ran `npx ts-node src/index.ts`
+   - Look for error messages and stack traces
+   - Monitor database query logs
+
+2. **Database Logs**
+   - PostgreSQL logs location:
+     ```bash
+     # macOS
+     /usr/local/var/log/postgres.log
+     
+     # Linux
+     /var/log/postgresql/postgresql-*.log
+     
+     # Windows
+     C:\Program Files\PostgreSQL\[version]\data\log
+     ```
+
+3. **Environment Variables**
+   - Check `.env` file in `github-tracker-backend` directory
+   - Verify `DATABASE_URL` and `GITHUB_TOKEN` are set correctly
+   - Ensure no extra spaces or quotes in values
+
+### Database Connection Setup
+The application uses a separate `db.ts` file to handle database connections. This ensures that:
+- Environment variables are loaded before database connection attempts
+- Database connection logic is centralized and reusable
+- Proper error handling for missing configuration
+
+If you encounter the error "SASL: SCRAM-SERVER-FIRST-MESSAGE: client password must be a string":
+1. Verify your `.env` file has the correct DATABASE_URL format:
+```bash
+# Without password
+DATABASE_URL=postgres://localhost/github_tracker
+
+# With password
+DATABASE_URL=postgres://username:password@localhost/github_tracker
+```
+2. Ensure there are no extra spaces or quotes in the connection string
+3. Make sure PostgreSQL is running and the database exists
+4. Verify the database user has proper permissions
+
 ### Database Connection Issues
 If you encounter database connection errors:
 
