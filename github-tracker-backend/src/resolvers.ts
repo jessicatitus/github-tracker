@@ -1,5 +1,5 @@
 import { fetchLatestRelease, fetchRepositoryDetails } from './github.ts';
-import pool from './db';
+import pool from './db.ts';
 
 interface Repository {
   id: string;
