@@ -246,7 +246,8 @@ psql -d github_tracker -c "\du"  # List users and their roles
 
 ### Trade-offs Made
 1. **Data Fetching**:
-   - Manual refresh instead of automatic polling to reduce API calls
+   - 5-minute polling interval balances freshness with API rate limits
+   - Manual refresh option for immediate updates
    - Batch updates to minimize database operations
    - Caching strategy balances freshness with performance
    - Theme changes optimized to prevent unnecessary refetches
@@ -256,11 +257,14 @@ psql -d github_tracker -c "\du"  # List users and their roles
    - Simplified filtering to essential use cases
    - Used Material-UI components for rapid development and consistency
    - Client-side theme management for instant feedback
+   - Green dot indicator shows "new since last check" rather than permanent new status
 
 3. **Performance**:
    - Optimistic UI updates for better perceived performance
-   - Limited real-time updates to reduce server load
    - Efficient caching to minimize network requests
+   - Database queries optimized with proper indexing
+   - Apollo Client cache-first policy for optimal performance
+   - Batch processing of repository updates
 
 ## Technical Implementation Details
 
@@ -271,6 +275,7 @@ When you submit a repository:
    - Validates the input format
    - Sends a GraphQL mutation to the backend
    - Shows loading state
+   - Handles validation errors with user-friendly messages
 
 2. Backend:
    - Validates the repository exists on GitHub
@@ -280,30 +285,24 @@ When you submit a repository:
      - Repository info in `repositories` table
      - Release info in `releases` table
      - Initial seen status in `seen_status` table
+   - Error Handling:
+     - Returns appropriate error for non-existent repositories
+     - Handles GitHub API rate limits
+     - Manages database connection failures
+     - Provides detailed error messages
 
 3. Database:
    - Creates new records with proper foreign key relationships
    - Ensures data integrity with constraints
+   - Handles concurrent submissions
+   - Manages transaction rollbacks on failure
 
 4. Response:
    - Returns the new repository data
    - Updates Apollo Client cache
    - Updates UI to show the new repository
    - Shows success/error message
-
-### Status Persistence
-- Status (seen/unseen) persists because:
-  1. It's stored in the PostgreSQL database in the `seen_status` table
-  2. Each release has a boolean `seen` field
-  3. The status is loaded when the app starts and saved on each toggle
-  4. The database ensures the data survives server restarts and page refreshes
-
-### Filtering System
-- Filtering works through:
-  1. GraphQL queries that include filter parameters
-  2. PostgreSQL queries that filter based on the `seen_status` table
-  3. Client-side state management with Apollo Client
-  4. Material-UI components for the filter UI
+   - Handles partial success cases
 
 ### 5-Minute Refresh Interval
 - We chose 5 minutes as a balance between keeping data fresh and not overwhelming the GitHub API
@@ -312,6 +311,16 @@ When you submit a repository:
   2. For each repo, calls the GitHub API to check for new releases
   3. If a new release is found, it's added to the database
   4. The green dot appears to indicate new data
+- Error Handling:
+  1. Implements exponential backoff for failed refreshes
+  2. Continues processing other repositories if one fails
+  3. Logs errors for monitoring
+  4. Maintains last successful refresh timestamp
+- GitHub API Issues:
+  1. Handles rate limiting with proper delays
+  2. Continues operation if API is temporarily down
+  3. Retries failed requests with backoff
+  4. Maintains data consistency during API issues
 
 ### Green Dot Indicator
 - The green dot is a Material-UI component that appears when:
@@ -319,6 +328,35 @@ When you submit a repository:
   2. A manual refresh finds a new release
 - It goes away on page refresh because it's stored in the Apollo Client cache
 - This is intentional to show "new since last check" rather than "new since forever"
+- Cache Management:
+  1. Properly invalidates on new data
+  2. Persists across component re-renders
+  3. Resets on page refresh
+  4. Handles concurrent updates
+
+### Status Persistence
+- Status (seen/unseen) persists because:
+  1. It's stored in the PostgreSQL database in the `seen_status` table
+  2. Each release has a boolean `seen` field
+  3. The status is loaded when the app starts and saved on each toggle
+  4. The database ensures the data survives server restarts and page refreshes
+- Concurrency Handling:
+  1. Uses database transactions for updates
+  2. Handles race conditions
+  3. Maintains consistency across multiple users
+  4. Recovers from failed updates
+
+### Filtering System
+- Filtering works through:
+  1. GraphQL queries that include filter parameters
+  2. PostgreSQL queries that filter based on the `seen_status` table
+  3. Client-side state management with Apollo Client
+  4. Material-UI components for the filter UI
+- Performance Optimizations:
+  1. Indexed database fields for fast filtering
+  2. Pagination for large datasets
+  3. Cached filter results
+  4. Optimized query patterns
 
 ### Manual Refresh
 - When you click refresh:
@@ -327,31 +365,11 @@ When you submit a repository:
   3. Updates the database with any new releases
   4. Refreshes the Apollo Client cache
   5. Updates the UI to show new data
-
-### Data Fetching & Caching
-- Apollo Client Optimization:
-  1. Implements `cache-first` policy to minimize network requests
-  2. Caches repository data locally for better performance
-  3. Manages optimistic updates for better UX
-  4. Handles cache invalidation on mutations
-- Fetch Triggers:
-  1. Manual refresh (via refresh button)
-  2. Adding/removing repositories
-  3. Marking repositories as seen/unseen
-  4. Every 5 minutes (polling interval)
-- Performance Optimizations:
-  1. Prevents unnecessary refetches during theme changes
-  2. Batch updates to minimize database operations
-  3. Efficient caching to minimize network requests
-  4. Optimistic UI updates for better perceived performance
-
-### Responsive Design
-- The design is responsive because:
-  1. Uses Material-UI's responsive components
-  2. CSS Grid and Flexbox for layout
-  3. Media queries for different screen sizes
-  4. Mobile-first approach in the CSS
-  5. Touch-friendly button sizes and spacing
+- Concurrency Handling:
+  1. Prevents multiple simultaneous refreshes
+  2. Shows loading state during refresh
+  3. Handles failed refreshes gracefully
+  4. Maintains UI responsiveness
 
 ### Dark Mode & Theme System
 - Dark mode implementation:
@@ -371,6 +389,33 @@ When you submit a repository:
   2. Prevents unnecessary re-renders
   3. No API calls during theme changes
   4. Efficient state management
+- Performance Considerations:
+  1. Theme changes don't trigger data refetches
+  2. Smooth transitions between themes
+  3. No layout shifts during theme changes
+  4. Efficient CSS variable updates
+
+### Data Fetching & Caching
+- Apollo Client Optimization:
+  1. Implements `cache-first` policy to minimize network requests
+  2. Caches repository data locally for better performance
+  3. Manages optimistic updates for better UX
+  4. Handles cache invalidation on mutations
+- Fetch Triggers:
+  1. Manual refresh (via refresh button)
+  2. Adding/removing repositories
+  3. Marking repositories as seen/unseen
+  4. Every 5 minutes (polling interval)
+- Performance Optimizations:
+  1. Prevents unnecessary refetches during theme changes
+  2. Batch updates to minimize database operations
+  3. Efficient caching to minimize network requests
+  4. Optimistic UI updates for better perceived performance
+- Cache Management:
+  1. Proper invalidation strategies
+  2. Handles stale data gracefully
+  3. Manages cache size
+  4. Recovers from cache corruption
 
 ### Error Handling & Recovery
 - GitHub API Rate Limits:
@@ -378,18 +423,21 @@ When you submit a repository:
   2. Caches responses to minimize API calls
   3. Shows user-friendly messages when limits are reached
   4. Automatically retries after rate limit window
-
 - Repository Access Issues:
   1. Handles deleted or made-private repositories gracefully
   2. Shows appropriate error messages to users
   3. Maintains database integrity
   4. Allows manual removal of inaccessible repositories
-
 - Connection Error Handling:
   1. Implements retry logic for failed requests
   2. Shows user-friendly error messages
   3. Maintains application state during errors
   4. Provides manual refresh option when automatic updates fail
+- Network Issues:
+  1. Handles timeouts gracefully
+  2. Implements circuit breaker pattern
+  3. Maintains offline functionality
+  4. Recovers from network interruptions
 
 ### Data Flow Architecture
 - Apollo Client Cache Management:
@@ -397,24 +445,26 @@ When you submit a repository:
   2. Normalizes data to prevent duplicates
   3. Manages optimistic updates for better UX
   4. Handles cache invalidation on mutations
-
 - GraphQL Schema Structure:
   1. Defines clear types for repositories and releases
   2. Implements proper input validation
   3. Uses fragments for reusable query parts
   4. Optimizes query depth and complexity
-
 - Database Normalization:
   1. Proper table relationships with foreign keys
   2. Indexed fields for better query performance
   3. Cascading deletes for data integrity
   4. Efficient join operations for related data
-
 - Frontend-Backend Communication:
   1. RESTful GraphQL API design
   2. Proper error handling and status codes
   3. Type-safe communication with TypeScript
   4. Efficient data transfer with proper field selection
+- Data Consistency:
+  1. Handles concurrent updates
+  2. Maintains referential integrity
+  3. Implements proper locking strategies
+  4. Recovers from partial failures
 
 ### Security Measures
 - GitHub Token Management:
@@ -422,24 +472,25 @@ When you submit a repository:
   2. No token exposure in client-side code
   3. Proper token scoping for minimal permissions
   4. Regular token rotation capability
-
+  5. Handles token expiration gracefully
 - Database Security:
   1. Connection string encryption
   2. Proper user permissions
   3. Prepared statements to prevent SQL injection
   4. Regular security audits
-
+  5. Secure password handling
 - Input Sanitization:
   1. Server-side validation of all inputs
   2. Type checking with TypeScript
   3. GraphQL input validation
   4. Proper error handling for invalid inputs
-
+  5. XSS prevention
 - API Protection:
   1. Rate limiting on endpoints
   2. CORS configuration
   3. Input validation middleware
   4. Error message sanitization
+  5. Protection against common attacks
 
 ## Data Persistence
 
