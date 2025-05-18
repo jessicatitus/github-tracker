@@ -234,27 +234,6 @@ psql -d github_tracker -c "\du"  # List users and their roles
 - **Responsive Design**: Works on both desktop and mobile devices
 - **Dark Mode Support**: Automatically matches system preferences
 
-## Technical Implementation Info
-
-### Dark Mode
-The application implements a client-side dark mode that:
-- Detects system color scheme preferences
-- Persists user theme preference in localStorage
-- Provides instant theme switching without server requests
-- Uses Material-UI's theming system for consistent styling
-- Optimized to prevent unnecessary re-renders and API calls
-
-### Data Fetching Optimization
-The application uses Apollo Client with optimized caching:
-- Implements `cache-first` policy to minimize network requests
-- Caches repository data locally for better performance
-- Only fetches new data when:
-  - Manually refreshing (via refresh button)
-  - Adding/removing repositories
-  - Marking repositories as seen/unseen
-  - Every 5 minutes (polling interval)
-- Prevents unnecessary refetches during theme changes
-
 ## Implementation Notes
 
 ### Current Implementation
@@ -283,39 +262,184 @@ The application uses Apollo Client with optimized caching:
    - Limited real-time updates to reduce server load
    - Efficient caching to minimize network requests
 
-## Future Improvements
+## Technical Implementation Details
 
-### Short-term
-1. **Enhanced Filtering**:
-   - Advanced search with regex support
-   - Custom filter combinations
-   - Save favorite filters
+### Repository Submission Process
+When you submit a repository:
 
-2. **Notification System**:
-   - Email notifications for new releases
-   - Browser notifications
-   - Custom notification preferences
+1. Frontend:
+   - Validates the input format
+   - Sends a GraphQL mutation to the backend
+   - Shows loading state
 
-3. **Data Visualization**:
-   - Release frequency charts
-   - Commit activity graphs
-   - Contributor statistics
+2. Backend:
+   - Validates the repository exists on GitHub
+   - Fetches repository details using Octokit
+   - Gets the latest release information
+   - Stores in PostgreSQL:
+     - Repository info in `repositories` table
+     - Release info in `releases` table
+     - Initial seen status in `seen_status` table
 
-### Long-term
-1. **Advanced Features**:
-   - Multiple GitHub account support
-   - Team collaboration features
-   - Custom release tracking rules
+3. Database:
+   - Creates new records with proper foreign key relationships
+   - Ensures data integrity with constraints
 
-2. **Performance**:
-   - Implement WebSocket for real-time updates
-   - Add Redis caching layer
-   - Optimize database queries
+4. Response:
+   - Returns the new repository data
+   - Updates Apollo Client cache
+   - Updates UI to show the new repository
+   - Shows success/error message
 
-3. **User Experience**:
-   - Custom themes
-   - Keyboard shortcuts
-   - Progressive Web App (PWA) support
+### Status Persistence
+- Status (seen/unseen) persists because:
+  1. It's stored in the PostgreSQL database in the `seen_status` table
+  2. Each release has a boolean `seen` field
+  3. The status is loaded when the app starts and saved on each toggle
+  4. The database ensures the data survives server restarts and page refreshes
+
+### Filtering System
+- Filtering works through:
+  1. GraphQL queries that include filter parameters
+  2. PostgreSQL queries that filter based on the `seen_status` table
+  3. Client-side state management with Apollo Client
+  4. Material-UI components for the filter UI
+
+### 5-Minute Refresh Interval
+- We chose 5 minutes as a balance between keeping data fresh and not overwhelming the GitHub API
+- When it refreshes, it:
+  1. Queries the database for all tracked repositories
+  2. For each repo, calls the GitHub API to check for new releases
+  3. If a new release is found, it's added to the database
+  4. The green dot appears to indicate new data
+
+### Green Dot Indicator
+- The green dot is a Material-UI component that appears when:
+  1. A new release is detected during the 5-minute refresh
+  2. A manual refresh finds a new release
+- It goes away on page refresh because it's stored in the Apollo Client cache
+- This is intentional to show "new since last check" rather than "new since forever"
+
+### Manual Refresh
+- When you click refresh:
+  1. It immediately triggers the GitHub API check for all repositories
+  2. Bypasses the 5-minute wait
+  3. Updates the database with any new releases
+  4. Refreshes the Apollo Client cache
+  5. Updates the UI to show new data
+
+### Data Fetching & Caching
+- Apollo Client Optimization:
+  1. Implements `cache-first` policy to minimize network requests
+  2. Caches repository data locally for better performance
+  3. Manages optimistic updates for better UX
+  4. Handles cache invalidation on mutations
+- Fetch Triggers:
+  1. Manual refresh (via refresh button)
+  2. Adding/removing repositories
+  3. Marking repositories as seen/unseen
+  4. Every 5 minutes (polling interval)
+- Performance Optimizations:
+  1. Prevents unnecessary refetches during theme changes
+  2. Batch updates to minimize database operations
+  3. Efficient caching to minimize network requests
+  4. Optimistic UI updates for better perceived performance
+
+### Responsive Design
+- The design is responsive because:
+  1. Uses Material-UI's responsive components
+  2. CSS Grid and Flexbox for layout
+  3. Media queries for different screen sizes
+  4. Mobile-first approach in the CSS
+  5. Touch-friendly button sizes and spacing
+
+### Dark Mode & Theme System
+- Dark mode implementation:
+  1. Material-UI's theme system for consistent styling
+  2. System preference detection using `prefers-color-scheme`
+  3. Theme preference stored in localStorage
+  4. Theme context provider wrapping the app
+  5. CSS variables for dynamic color switching
+- Features:
+  1. Automatic system preference detection
+  2. Manual theme toggle option
+  3. Persistent theme selection
+  4. Smooth theme transitions
+  5. Consistent styling across components
+- Optimizations:
+  1. Instant theme switching without server requests
+  2. Prevents unnecessary re-renders
+  3. No API calls during theme changes
+  4. Efficient state management
+
+### Error Handling & Recovery
+- GitHub API Rate Limits:
+  1. Implements exponential backoff for rate limit errors
+  2. Caches responses to minimize API calls
+  3. Shows user-friendly messages when limits are reached
+  4. Automatically retries after rate limit window
+
+- Repository Access Issues:
+  1. Handles deleted or made-private repositories gracefully
+  2. Shows appropriate error messages to users
+  3. Maintains database integrity
+  4. Allows manual removal of inaccessible repositories
+
+- Connection Error Handling:
+  1. Implements retry logic for failed requests
+  2. Shows user-friendly error messages
+  3. Maintains application state during errors
+  4. Provides manual refresh option when automatic updates fail
+
+### Data Flow Architecture
+- Apollo Client Cache Management:
+  1. Implements `cache-first` policy for optimal performance
+  2. Normalizes data to prevent duplicates
+  3. Manages optimistic updates for better UX
+  4. Handles cache invalidation on mutations
+
+- GraphQL Schema Structure:
+  1. Defines clear types for repositories and releases
+  2. Implements proper input validation
+  3. Uses fragments for reusable query parts
+  4. Optimizes query depth and complexity
+
+- Database Normalization:
+  1. Proper table relationships with foreign keys
+  2. Indexed fields for better query performance
+  3. Cascading deletes for data integrity
+  4. Efficient join operations for related data
+
+- Frontend-Backend Communication:
+  1. RESTful GraphQL API design
+  2. Proper error handling and status codes
+  3. Type-safe communication with TypeScript
+  4. Efficient data transfer with proper field selection
+
+### Security Measures
+- GitHub Token Management:
+  1. Secure storage in environment variables
+  2. No token exposure in client-side code
+  3. Proper token scoping for minimal permissions
+  4. Regular token rotation capability
+
+- Database Security:
+  1. Connection string encryption
+  2. Proper user permissions
+  3. Prepared statements to prevent SQL injection
+  4. Regular security audits
+
+- Input Sanitization:
+  1. Server-side validation of all inputs
+  2. Type checking with TypeScript
+  3. GraphQL input validation
+  4. Proper error handling for invalid inputs
+
+- API Protection:
+  1. Rate limiting on endpoints
+  2. CORS configuration
+  3. Input validation middleware
+  4. Error message sanitization
 
 ## Data Persistence
 
@@ -372,3 +496,37 @@ CREATE TABLE seen_status (
 The data will persist even if you:
 - Restart the servers
 - Restart your computer
+
+## Future Improvements
+
+### Short-term
+1. **Enhanced Filtering**:
+   - Advanced search with regex support
+   - Custom filter combinations
+   - Save favorite filters
+
+2. **Notification System**:
+   - Email notifications for new releases
+   - Browser notifications
+   - Custom notification preferences
+
+3. **Data Visualization**:
+   - Release frequency charts
+   - Commit activity graphs
+   - Contributor statistics
+
+### Long-term
+1. **Advanced Features**:
+   - Multiple GitHub account support
+   - Team collaboration features
+   - Custom release tracking rules
+
+2. **Performance**:
+   - Implement WebSocket for real-time updates
+   - Add Redis caching layer
+   - Optimize database queries
+
+3. **User Experience**:
+   - Custom themes
+   - Keyboard shortcuts
+   - Progressive Web App (PWA) support
